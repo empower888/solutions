@@ -1,0 +1,137 @@
+JBoss Migration and Patching from 7.2.9 to 7.3.10 [ MARI ACC servers]
+
+1. Check the size using :
+		df -h
+		
+2. Take backup of entire jboss home:
+	Before proceeding with the patching of Jboss, we need to take the back up JBOSS_Home. The command to take the back-up is as follows:
+
+	cp -pr jboss-eap-7.2 jboss-eap-7.2_bkp
+	
+3. Go to : 
+	cd /app/jboss-eap-7.2/standalone/configuration/
+	
+	Take backup of all xml files in standalone folder(Mainly standalone-*.xml)
+	
+	First add tag into older version i.e 7.2.9 in all xml files in standalone folder(Mainly standalone-*.xml)
+	
+	Modules:
+	~~~
+		<extension module="org.wildfly.extension.microprofile.config-smallrye"/>
+		<extension module="org.wildfly.extension.microprofile.health-smallrye"/>
+		<extension module="org.wildfly.extension.microprofile.opentracing-smallrye"/>
+	~~~
+	
+	Subsystem:
+	~~~
+        <subsystem xmlns="urn:wildfly:microprofile-config-smallrye:1.0"/>
+        <subsystem xmlns="urn:wildfly:microprofile-health-smallrye:1.0" security-enabled="false"/>
+        <subsystem xmlns="urn:wildfly:microprofile-opentracing-smallrye:1.0"/>
+	~~~
+
+4. Copy the installables (jboss-eap-7.3.0.zip ) to the /tmp directory of application server using FileZilla app
+	
+	
+5. Next we need to change the ownership of jboss-eap-7.3.0.zip from root
+	chown MARIadm:MARIadm file_name 
+	
+	Eg: chown MARIadm:MARIadm jboss-eap-7.3.0.zip 
+	
+6. Then copy jboss-eap-7.3.0.zip to /app
+	cp jboss-eap-7.3.0.zip /app
+	
+7. Change the mode of the file
+	chmod 755 jboss-eap-7.3.0.zip
+	
+8. Unzip the file
+	unzip jboss-eap-7.3.0.zip
+	
+9. Go to : 
+	cd /app/jboss-eap-7.3/standalone/configuration/
+	
+	Take backup of all xml files in standalone folder(Mainly standalone-*.xml)
+	
+	First add tag into newer version i.e 7.3.0 in all xml files in standalone folder(Mainly standalone-*.xml)
+	
+	Modules:
+	~~~
+		
+		<extension module="org.wildfly.extension.microprofile.config-smallrye"/>
+		<extension module="org.wildfly.extension.microprofile.health-smallrye"/>
+		<extension module="org.wildfly.extension.microprofile.metrics-smallrye"/>
+		<extension module="org.wildfly.extension.microprofile.opentracing-smallrye"/>
+	~~~
+	
+	Subsystem:
+	~~~
+		<subsystem xmlns="urn:wildfly:microprofile-config-smallrye:1.0"/>
+		<subsystem xmlns="urn:wildfly:microprofile-health-smallrye:2.0" security-enabled="false"/>
+		<subsystem xmlns="urn:wildfly:microprofile-metrics-smallrye:2.0" security-enabled="false" exposed-subsystems="*"/>
+		<subsystem xmlns="urn:wildfly:microprofile-opentracing-smallrye:1.0"/>
+	~~~
+	
+10. Copy the com directory from the below path :
+	cd /app/jboss-eap-7.3/modules/
+	
+11. Copy the following files from 7.2.9 to 7.3.0
+	cp -pr ShutdownMaster.sh /app/jboss-eap-7.3/bin
+	cp -pr ShutdownSlave.sh /app/jboss-eap-7.3/bin
+	cp -pr startDomainMaster.sh /app/jboss-eap-7.3/bin
+	
+12. Stop JBoss 7.2 before performing migration
+
+	./ShutdownMaster
+	./ShutdownSlave
+
+13. Now perform Migration using the below command:
+	./jboss-server-migration.sh --source=/app/jboss-eap-7.2 --interactive true
+	
+	Here it Will ask few option as we select interactive during our setup
+
+	[i].This tool is not able to assert if persistent deployments found are compatible with the target server, skip persistent deployments migration?
+
+	yes/no?
+
+	>>no
+
+	[ii]. Migrate all persistent deployments found?
+
+	yes/no?
+
+	>>yes
+
+	[iii].Migrate all configurations?
+
+	yes/no?
+
+	>>yes
+	
+	Output:
+	Migration Result : SUCCESS
+	
+14. Start both master and slave nodes :
+	
+	nohup ./domain.sh --host-config=host-master.xml &
+
+	nohup ./domain.sh --host-config=host-slave.xml &
+	
+15. Now perform cumulative Patching for both master and slave :
+	Go to console=>Patching==>add patch==>Stop servers(YES)==>upload the file (jboss-eap-7.3.10.zip)==>finish
+	
+16. Start both master and slave nodes
+	
+	nohup ./domain.sh --host-config=host-master.xml &
+
+	nohup ./domain.sh --host-config=host-slave.xml &
+
+17. Change the version to 7.3 in bootup file 
+	/etc/init.d ==>jboss-eap-rhel.sh==>/etc/default/jboss-eap.conf
+	
+18. Also update the newer version in crontab 
+	E.g /app/START-STOP/Restart-LILY-Master.sh ==> update to 7.3
+	
+	
+	
+
+
+	

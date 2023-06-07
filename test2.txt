@@ -1,0 +1,66 @@
+---
+  - name: Apache http 
+    hosts: all
+    tasks:
+	-name : Download Apache Latest version
+	 action : shell sudo wget https://dlcdn.apache.org/httpd/httpd-2.4.56.tar.gz
+	 
+	 args :
+	 chdir: "/app/"
+	 
+	-name :install packages
+	 shell : sudo yum install apr*
+			 sleep_sec : 30
+    		 sudo yum install pcr*
+			 sleep_sec : 30
+     	     sudo yum install gcc*
+			 sleep_sec : 30
+         	 sudo yum install apr-util-ldap*
+			 sleep_sec : 30
+			 
+    - name: upgrading to latest version
+      become: yes
+      delay: 10
+      async: 10
+      poll: 60
+      shell: |
+
+        echo -e "\n Backing up Apache dir \n"
+		cp -pr /app/Apache2.4.41 /app/Apache2.4.41-`date +%F`.bkp
+		echo -e "\n Backup success \n"
+			chmod 750 httpd-2.4.56.tar.gz
+			
+			tar -zxvf httpd-2.4.56.tar.gz
+			
+			chown -R opaadm:opaadm httpd-2.4.56
+			
+			cd httpd-2.4.56
+			
+			./configure --prefix=/app/Apache2.4.56
+			
+			make
+			
+			make install
+			
+			if
+			test -e /app/Apache2.4.51/bin/httpd     ##tests whether file exists or no
+			then
+				mv /etc/init.d/httpd /etc/init.d/httpd.old
+				cp /app/Apache2.4.56/bin/httpd /etc/init.d/httpd
+				/app/Apache2.4.56/bin/httpd -k restart
+		
+				echo "Successfully installed Apache httpd"
+		
+			else
+		
+				echo "Failed to compile Apache httpd"
+		
+			fi
+
+			exit 0
+          
+      args:
+      register: fileout
+      tags: fileout 
+
+    - debug: msg="{{ fileout.stdout_lines }}"

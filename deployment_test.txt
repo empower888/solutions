@@ -1,0 +1,218 @@
+#!/bin/sh
+export JAVA_HOME="/usr/java/jdk1.8.0_341"
+
+echo "`date` Starting to deploy MARI version $1"
+
+echo "`date` Fetching the JVM state"
+sh /app/deployment/MARI_A/MARI_A_N1N2_ServerState.sh
+a3=$(cat /app/deployment/MARI_A/MARI_A_N1_ServerState.txt)
+c3=$(cat /app/deployment/MARI_A/MARI_A_N2_ServerState.txt)
+echo "`date` MARI A N1 is $a3"
+echo "`date` MARI A N2 is $c3"
+
+#stop the JVM
+/bin/sh /app/jboss-eap-7.3/bin/jboss-cli.sh --connect --controller=10.82.34.150:9990 --command="/server-group=SG-MARI-A-N1N2:stop-servers"
+
+
+sh /app/deployment/MARI_A/MARI_A_N1N2_ServerState.sh
+
+sleep 10
+a3=$(cat /app/deployment/MARI_A/MARI_A_N1_ServerState.txt)
+b3="STOPPED"
+c3=$(cat /app/deployment/MARI_A/MARI_A_N2_ServerState.txt)
+d3="STOPPED"
+echo "`date` MARI A N1 is $a3"
+echo "`date` MARI A N2 is $c3"
+
+while [[ "$a3" != $b3 ]] || [[ "$c3" != $d3 ]]
+do
+echo "`date` Waiting for STOPPED status"
+sh /app/deployment/MARI_A/MARI_A_N1N2_ServerState.sh
+sleep 10
+a3=$(cat /app/deployment/MARI_A/MARI_A_N1_ServerState.txt)
+b3="STOPPED"
+c3=$(cat /app/deployment/MARI_A/MARI_A_N2_ServerState.txt)
+d3="STOPPED"
+echo "`date` MARI A N1 is $a3"
+echo "`date` MARI A N2 is $c3"
+sleep 10
+done
+
+
+#disable the ear
+echo "`date` Disabling the existing MARI version"
+/bin/sh /app/jboss-eap-7.3/bin/jboss-cli.sh --connect --controller=10.82.34.150:9990 --command="deployment-info --server-group=SG-MARI-A-N1N2" >/app/deployment/MARI_A/Deployment_status.txt
+cat Deployment_status.txt |grep -i "enabled" |grep -v grep |awk '{print $1}'>/app/deployment/MARI_A/enabled_ear.txt
+q=$(cat /app/deployment/MARI_A/enabled_ear.txt)
+/bin/sh /app/jboss-eap-7.3/bin/jboss-cli.sh --connect --controller=10.82.34.150:9990 --command="deployment disable $q --server-groups=SG-MARI-A-N1N2" >/app/deployment/MARI_A/disable_ear.txt
+sleep 20
+echo "`date` MARI version $q has been disabled"
+echo "`date` Undeploying MARI version $q"
+
+#undeploy
+
+/bin/sh /app/jboss-eap-7.3/bin/jboss-cli.sh --connect --controller=10.82.34.150:9990 --command="undeploy $q --server-groups=SG-MARI-A-N1N2 --keep-content" >/app/deployment/MARI_A/undeploy_ear.txt
+sleep 20
+
+echo "`date` Undeployment is completed"
+echo "`date` Deploying MARI version $1"
+
+
+#deploy new ear
+/bin/sh /app/jboss-eap-7.3/bin/jboss-cli.sh --connect --controller=10.82.34.150:9990 --command="deploy --name=$1 --server-groups=SG-MARI-A-N1N2" >/app/deployment/MARI_A/deploy_ear.txt
+sleep 30
+
+echo "`date` Deployment MARI version $1 is enabled"
+echo "`date` Starting the JVM"
+
+
+#Start the JVM
+
+#/bin/sh /app/jboss-eap-7.3/bin/jboss-cli.sh --connect --controller=10.82.34.150:9990 --command="/host=n1/server=jvm_MARI_A_N1:start(blocking=true)"
+#/bin/sh /app/jboss-eap-7.3/bin/jboss-cli.sh --connect --controller=10.82.34.150:9990 --command="/host=n2/server=jvm_MARI_A_N2:start(blocking=true)"
+
+/bin/sh /app/jboss-eap-7.3/bin/jboss-cli.sh --connect --controller=10.82.34.150:9990 --command="/server-group=SG-MARI-A-N1N2:start-servers"
+sleep 100
+sh /app/deployment/MARI_A/MARI_A_N1N2_ServerState.sh
+a3=$(cat /app/deployment/MARI_A/MARI_A_N1_ServerState.txt)
+c3=$(cat /app/deployment/MARI_A/MARI_A_N2_ServerState.txt)
+echo "`date` MARI A N1 is $a3"
+echo "`date` MARI A N2 is $c3"
+
+#echo "`date` JVM is started"
+
+/bin/sh /app/jboss-eap-7.3/bin/jboss-cli.sh --connect --controller=10.82.34.150:9990 --command="deployment-info --server-group=SG-MARI-A-N1N2" >/app/deployment/MARI_A/Deployment_status.txt
+cat Deployment_status.txt |grep -i "enabled" |grep -v grep |awk '{print $2}'>/app/deployment/MARI_A/enabled_ear.txt
+t=$(cat /app/deployment/MARI_A/enabled_ear.txt)
+echo "`date` Deployment for MARI-N1N2 version $t has been completed "
+
+#echo "`date` Going for deployment MARI-A-N3N4"
+
+echo "`date` Going for basic sanity check"
+
+sh /app/deployment/MARI_A/MARI_n1_basic_sanity_check.sh
+sh /app/deployment/MARI_A/MARI_n2_basic_sanity_check.sh
+
+cat /app/deployment/MARI_A/MARI_n1_basic_sanity_check.txt |grep -i "HTTP/1.1" |grep -v grep |awk '{print $2}'>/app/deployment/MARI_A/response_code_n1.txt
+cat /app/deployment/MARI_A/MARI_n2_basic_sanity_check.txt |grep -i "HTTP/1.1" |grep -v grep |awk '{print $2}'>/app/deployment/MARI_A/response_code_n2.txt
+
+a=$(cat /app/deployment/MARI_A/response_code_n1.txt)
+b=$(cat /app/deployment/MARI_A/response_code_n2.txt)
+
+if [[ "$a" == "200" ]] && [[ "$b" == "200" ]]
+then
+echo "`date` Basic Sanity check status is OK for MARI-A-N1N2"
+echo "`date` Going for deployment SG-MARI-A-N3N4"
+
+#######################################################################################################
+#DEPLOYMENT FOR SG-MARI-A-N3N4
+
+###########################################################################################################
+
+
+sh /app/deployment/MARI_A/MARI_A_N3N4_ServerState.sh
+a3=$(cat /app/deployment/MARI_A/MARI_A_N3_ServerState.txt)
+c3=$(cat /app/deployment/MARI_A/MARI_A_N4_ServerState.txt)
+echo "`date` MARI A N3 is $a3"
+echo "`date` MARI A N4 is $c3"
+#stop the JVM
+/bin/sh /app/jboss-eap-7.3/bin/jboss-cli.sh --connect --controller=10.82.34.150:9990 --command="/server-group=SG-MARI-A-N3N4:stop-servers"
+
+
+sh /app/deployment/MARI_A/MARI_A_N3N4_ServerState.sh
+
+sleep 10
+a3=$(cat /app/deployment/MARI_A/MARI_A_N3_ServerState.txt)
+b3="STOPPED"
+c3=$(cat /app/deployment/MARI_A/MARI_A_N4_ServerState.txt)
+d3="STOPPED"
+echo "`date` MARI A N3 is $a3"
+echo "`date` MARI A N4 is $c3"
+
+while [[ "$a3" != $b3 ]] || [[ "$c3" != $d3 ]]
+do
+echo "`date` Waiting for STOPPED status"
+sh /app/deployment/MARI_A/MARI_A_N3N4_ServerState.sh
+sleep 10
+a3=$(cat /app/deployment/MARI_A/MARI_A_N3_ServerState.txt)
+b3="STOPPED"
+c3=$(cat /app/deployment/MARI_A/MARI_A_N4_ServerState.txt)
+d3="STOPPED"
+echo "`date` MARI A N3 is $a3"
+echo "`date` MARI A N4 is $c3"
+sleep 10
+done
+
+
+#disable the ear
+
+echo "`date` Disabling the existing MARI version"
+/bin/sh /app/jboss-eap-7.3/bin/jboss-cli.sh --connect --controller=10.82.34.150:9990 --command="deployment-info --server-group=SG-MARI-A-N3N4" >/app/deployment/MARI_A/Deployment_status.txt
+cat Deployment_status.txt |grep -i "enabled" |grep -v grep |awk '{print $1}'>/app/deployment/MARI_A/enabled_ear.txt
+q=$(cat /app/deployment/MARI_A/enabled_ear.txt)
+/bin/sh /app/jboss-eap-7.3/bin/jboss-cli.sh --connect --controller=10.82.34.150:9990 --command="deployment disable $q --server-groups=SG-MARI-A-N3N4" >/app/deployment/MARI_A/disable_ear.txt
+sleep 20
+echo "`date` MARI version $q has been disabled"
+echo "`date` Undeploying MARI version $q"
+
+#undeploy
+
+/bin/sh /app/jboss-eap-7.3/bin/jboss-cli.sh --connect --controller=10.82.34.150:9990 --command="undeploy $q --server-groups=SG-MARI-A-N3N4 --keep-content" >/app/deployment/MARI_A/undeploy_ear.txt
+sleep 30
+
+echo "`date` Undeployment is completed"
+echo "`date` Deploying MARI version $1"
+
+
+#deploy new ear
+/bin/sh /app/jboss-eap-7.3/bin/jboss-cli.sh --connect --controller=10.82.34.150:9990 --command="deploy --name=$1 --server-groups=SG-MARI-A-N3N4" >/app/deployment/MARI_A/deploy_ear.txt
+sleep 50
+
+echo "`date` Deployment MARI version $1 is enabled"
+echo "`date` Starting the JVM"
+
+
+#Start the JVM
+
+#/bin/sh /app/jboss-eap-7.3/bin/jboss-cli.sh --connect --controller=10.82.34.150:9990 --command="/host=N3/server=jvm_MARI_A_N3:start(blocking=true)"
+#/bin/sh /app/jboss-eap-7.3/bin/jboss-cli.sh --connect --controller=10.82.34.150:9990 --command="/host=N4/server=jvm_MARI_A_N4:start(blocking=true)"
+
+/bin/sh /app/jboss-eap-7.3/bin/jboss-cli.sh --connect --controller=10.82.34.150:9990 --command="/server-group=SG-MARI-A-N3N4:start-servers"
+sleep 120
+sh /app/deployment/MARI_A/MARI_A_N3N4_ServerState.sh
+a3=$(cat /app/deployment/MARI_A/MARI_A_N3_ServerState.txt)
+c3=$(cat /app/deployment/MARI_A/MARI_A_N4_ServerState.txt)
+echo "`date` MARI A N3 is $a3"
+echo "`date` MARI A N4 is $c3"
+
+
+
+/bin/sh /app/jboss-eap-7.3/bin/jboss-cli.sh --connect --controller=10.82.34.150:9990 --command="deployment-info --server-group=SG-MARI-A-N3N4" >/app/deployment/MARI_A/Deployment_status.txt
+cat Deployment_status.txt |grep -i "enabled" |grep -v grep |awk '{print $2}'>/app/deployment/MARI_A/enabled_ear.txt
+t=$(cat /app/deployment/MARI_A/enabled_ear.txt)
+echo "`date` Deployment for MARI-A-N3N4 version $t has been completed "
+
+echo "`date` Going for basic sanity check SG-MARI-A-N3N4"
+
+sh /app/deployment/MARI_A/MARI_n3_basic_sanity_check.sh
+sh /app/deployment/MARI_A/MARI_n4_basic_sanity_check.sh
+
+cat /app/deployment/MARI_A/MARI_n3_basic_sanity_check.txt |grep -i "HTTP/1.1" |grep -v grep |awk '{print $2}'>/app/deployment/MARI_A/response_code_n3.txt
+cat /app/deployment/MARI_A/MARI_n4_basic_sanity_check.txt |grep -i "HTTP/1.1" |grep -v grep |awk '{print $2}'>/app/deployment/MARI_A/response_code_n4.txt
+
+c=$(cat /app/deployment/MARI_A/response_code_n3.txt)
+d=$(cat /app/deployment/MARI_A/response_code_n4.txt)
+
+if [[ "$c" == "200" ]] && [[ "$d" == "200" ]]
+then
+echo "`date` Basic Sanity check status is OK for MARI-A-N3N4"
+
+else
+
+echo "`date` basic sanity check status is NOK for MARI-A-N3N4"
+
+fi
+else
+echo "`date` basic sanity check status is NOK for MARI-A-N1N2"
+
+fi

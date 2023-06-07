@@ -1,0 +1,321 @@
+Download link for tomcat is as below. 
+
+https://archive.apache.org/dist/tomcat/tomcat-7/v7.0.109/bin/ 
+
+Transfer the file (apache-tomcat-7.0.109.tar.gz) to server under /tmp 
+
+Change ownership and permissions 
+
+sudo chown -R z888:z888 apache-tomcat-7.0.109.tar.gz 
+
+ 
+
+sudo chmod -R 777 apache-tomcat-7.0.109.tar.gz 
+
+ 
+
+ 
+
+ 
+
+  
+
+Move the file to /app/installables 
+
+mv apache-tomcat-7.0.109.tar.gz /app/installables/ 
+
+ 
+
+ 
+
+ 
+
+Extract the binary file inside it. 
+
+tar -xvzf apache-tomcat-7.0.109.tar.gz 
+
+ 
+
+ 
+
+ 
+
+Rename the file 
+
+mv apache-tomcat-7.0.109 z888-tomcat_v7.0.109 
+
+ 
+
+ 
+
+ 
+
+Move the new tomcat v7.0.109 file under /app 
+
+mv z888-tomcat_v7.0.109 /app 
+
+ 
+
+ 
+
+ 
+
+copy "tomcat-native.tar.gz" directory from /bin to java directory. 
+
+Path : /app/z888-tomcat_v7.0.109/bin 
+
+cp -pr tomcat-native.tar.gz /usr/java/jdk1.7.0_311/jre/lib/amd64/server/ 
+
+ 
+
+ 
+
+Extract "tomcat-native.tar.gz" file inside the java directory. 
+
+Path : /usr/java/jdk1.7.0_311/jre/lib/amd64/server/ 
+
+tar -xvzf tomcat-native.tar.gz 
+
+ 
+
+ 
+
+Do the following compilation process from the path below.  
+
+/usr/java/jdk1.7.0_311/jre/lib/amd64/server/tomcat-native-1.2.28-src/native/ 
+
+yum install apr-devel openssl-devel 
+
+ 
+
+yum install gcc-* 
+
+ 
+
+./configure --with-java-home=/usr/java/jdk1.7.0_311 && make && make install 
+
+ 
+
+./configure --with-apr=/usr/bin/apr-1-config --with-java-home=/usr/java/jdk1.7.0_311 --with-ssl=yes --prefix=/app/z888-tomcat_v7.0.109 
+
+ 
+
+ 
+
+ 
+
+Make changes in catalina.sh file 
+
+Path : /app/z888-tomcat_v7.0.109/bin 
+
+#Add below mentioned parameters. 
+
+JAVA_HOME="/usr/java/jdk1.7.0_311"  
+
+CATALINA_PID="/app/z888-tomcat_v7.0.109/logs/tomcat6.pid"  
+
+CATALINA_BASE="/app/z888-tomcat_v7.0.109"  
+
+CATALINA_HOME="/app/z888-tomcat_v7.0.109"  
+
+CATALINA_OPTS="-XX:MaxPermSize=256M -Xmx1G -Xms1G -server -XX:+UseParallelGC"  
+
+export LD_LIBRARY_PATH="/usr/local/apr/lib:/app/z888-tomcat_v7.0.109/lib" 
+
+ 
+
+ 
+
+Make /Catalina/localhost dir on tomcat v7.0.109 under /conf 
+
+Path : /app/z888-tomcat_v7.0.109/conf/ 
+
+mkdir -p Catalina/localhost 
+
+ 
+
+ 
+
+Copy the configuration files from tomcat v7.0.04 to tomcat v7.0.109 
+
+Path : /app/z888/dev/apache-tomcat-7.0.94/conf 
+
+cp –pr server.xml /app/z888-tomcat_v7.0.109/conf/ 
+
+cp –pr web.xml /app/z888-tomcat_v7.0.109/conf/ 
+
+cp –pr context.xml /app/z888-tomcat_v7.0.109/conf/ 
+
+ 
+
+ 
+
+Modify the server.xml file by setting the secret argument to “false” for AJP connector port. 
+
+<!-- Define an AJP 1.3 Connector on port 8015--> 
+
+     
+
+<Connector port="8015" protocol="AJP/1.3" redirectPort="8449" secretRequired="false" /> 
+
+ 
+
+ 
+
+ 
+
+Copy z888 tools directory to the new tomcat v7.0.109 and check the dir structure properly for all the files. 
+
+Path : /app/z888/dev/apache-tomcat-7.0.94/work/Catalina/localhost 
+
+cp -pr z888tools /app/z888-tomcat_v7.0.109/work/Catalina/localhost 
+
+ 
+
+Copy the webapps dir to the new tomcat v7.0.109 
+
+Path : /app/z888/dev/apache-tomcat-7.0.94 
+
+cp –pr webapps /app/z888-tomcat_v7.0.109 
+
+ 
+
+Move ojdbc6.jar to /lib under tomcat v7.0.109 
+
+Path : /app/z888/dev/apache-tomcat-7.0.94/lib 
+
+mv ojdbc6.jar /app/z888-tomcat_v7.0.109/lib 
+
+ 
+
+Modify the auto-bootup script placed under /etc/init.d 
+
+File : z888.sh 
+
+ 
+
+#!/bin/bash 
+
+# description: Tomcat Start Stop Restart 
+
+# processname: z888 
+
+# chkconfig: 234 20 80 
+
+JAVA_HOME=/usr/java/jdk1.7.0_311 
+
+export JAVA_HOME 
+
+PATH=$JAVA_HOME/bin:$PATH 
+
+export PATH 
+
+CATALINA_HOME=/app/z888-tomcat_v7.0.109 
+
+case $1 in 
+
+start) 
+
+su - z888 -p $CATALINA_HOME/bin/startup.sh 
+
+;; 
+
+stop) 
+
+su - z888 -p $CATALINA_HOME/bin/shutdown.sh 
+
+;; 
+
+restart) 
+
+su - z888 -p $CATALINA_HOME/bin/shutdown.sh 
+
+su - z888 -p $CATALINA_HOME/bin/startup.sh 
+
+;; 
+
+esac 
+
+exit 0 
+
+ 
+
+ 
+
+Point the log rotation script to tomcat 7.0.109 
+
+Path : /etc/logrotate.d/z888 
+
+/app/z888-tomcat_v7.0.109/logs/catalina.out{ 
+
+  copytruncate 
+
+  daily 
+
+  dateext 
+
+  dateformat -%Y-%m-%d-%H 
+
+  rotate 15 
+
+  compress 
+
+  missingok 
+
+  size 5M 
+
+  olddir /app/z888-tomcat_v7.0.109/logs 
+
+} 
+
+ 
+
+ 
+
+# Navigate to TOMCAT home directory (/app/z888-tomcat_v7.0.109/) and place below script named catalina_z888.sh which is for calling the log rotation script, already placed inside /etc/logrotate.d. 
+
+Syntax for catalina_z888.sh script: 
+
+#!/bin/bash 
+
+/usr/sbin/logrotate -v -f /etc/logrotate.d/z888 
+
+ 
+
+ 
+
+# Add catalina_z888.sh script in crontab for time based script execution using below script. 
+
+Edit crontab (crontab –e) and put below syntax: 
+
+#########Cron For rotating catalina.out logg ########### 
+
+  
+
+* */12 * * * /app/z888-tomcat_v7.0.109/catalina_z888.sh 
+
+ 
+
+ 
+
+Stop current z888 on tomcat 7.0.94 
+
+Path : /app/z888/dev/apache-tomcat-7.0.94/bin 
+
+./shutdown.sh 
+
+ 
+
+Start z888 on tomcat 7.0.109 
+
+Path : /app/z888-tomcat_v7.0.109/bin 
+
+./startup.sh 
+
+ 
+
+Check for z888 process using “ps -ef | grep z888” , ensure that the process is running with right user that is z888. 
+
+Check catalina.out file for logs, ensure that tomcat v7.0.109 has been started successfully with no errors/exceptions. 
+
+Also check the monitoring page url of z888 application. 

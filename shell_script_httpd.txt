@@ -1,0 +1,31 @@
+#!/bin/bash
+#script to upgrade Apache httpd
+/app/Apache2.4.51/bin/httpd -v
+echo "Upgrade apache ? [y/n]"
+read answer
+if [ "$answer" = "y" ]
+then
+echo -e "\n Backing up Apache dir \n"
+cp -pr /app/Apache2.4.41 /app/Apache2.4.41-`date +%F`.bkp
+echo -e "\n Backup success \n"
+	tar -zxvf httpd-2.4.*.tar.gz
+	cd httpd-2.4.*
+	./configure --prefix=/app/Apache2.4.51
+	make
+	make install
+	if
+	test -e /app/Apache2.4.51/bin/httpd     ##tests whether file exists or no
+	then
+		mv /etc/init.d/httpd /etc/init.d/httpd.old
+		cp /app/Apache2.4.51/bin/httpd /etc/init.d/httpd
+		/app/Apache2.4.51/bin/httpd -k restart
+		echo "******************************************************"
+		echo "Successfully installed Apache httpd"
+		echo "******************************************************"
+	else
+		echo "******************************************************"
+		echo "Failed to compile Apache httpd"
+		echo "******************************************************"
+fi
+fi
+exit 0

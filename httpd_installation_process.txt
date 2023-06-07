@@ -1,0 +1,68 @@
+Installation of Apache HTTP 2.4 
+
+Download link for HTTP server is as below. 
+
+        http://httpd.apache.org/download.cgi#apache24 
+
+Alternatively, HTTP installable is available in our shared fileserver path \\belgianrail.be\fileserver\TCS\MIDDLEWARE_TEAM\Softwares\Apache_HTTP2.4 
+
+ 
+
+Pre-requisites  
+
+ /app mount will be for middleware product installation directory. Make a directory named installable inside /app to place the installable file(httpd-2.4.41.tar) 
+
+apr, pcr, gcc and apr-util-ldap packages need to be installed in server.  
+
+ 
+
+Installation steps 
+
+First, move installable to /app directory and, provide necessary permission before executing the tar.gz file. 
+
+        chmod 777 httpd-2.4.41.tar.gz 
+
+Run below command to extract the installable, 
+
+        sudo tar -xvzf httpd-2.4.41.tar.gz  
+
+Navigate to the HTTP installation directory. 
+
+       cd /app/httpd-2.4.41 
+
+Change the ownership of directory using below command. 
+
+       sudo chown -R b2cforms:b2cforms httpd-2.4.41 
+
+To configure run below command. 
+
+       ./configure --prefix=/app/Apache2.4.41 
+
+       PREFIX must be replaced with the filesystem path under which the server should be installed. 
+
+       If PREFIX is not specified, it defaults to /usr/local/apache2. 
+
+To compile and install the package run below commands respectively. 
+
+       make 
+
+   make install 
+
+Navigate to prefix directory to customize httpd.conf file using below command. 
+
+      sudo vi httpd.conf 
+
+      By default, the HTTP server listener port is 80 but we have changed it to 8080 as we need root access if  any port is listing to port below 1024. 
+
+ 
+
+ 
+ 
+
+ 
+
+Switch to ‘bin’ directory and run below command to test apache HTTP service. 
+
+      To START --> ./apachectl -k start 
+
+       To STOP   --> ./apachectl -k stop 

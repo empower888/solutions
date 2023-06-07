@@ -1,0 +1,49 @@
+---
+    - name : Install Apache
+       hosts: 10.82.228.167
+        sudo: yes
+      version: 2.4.56
+      url:https://downloads.apache.org/httpd/httpd-{version}.tar.gz
+      tasks:         - name: Download Apache
+            become:yes 
+            src: /tmp
+            cmd: wget ${url}
+        -name: Install apr,pcr,gcc,apr-util-ldap
+            become:yes
+            shell: yum install apr-util-ldap*
+                   yum install pcr*
+                   yum install apr*
+                   yum install gcc*
+        - name: Change permission of file
+            shell: chmod 750 httpd-${version}.tar.gz
+        - name: Extract the installable
+            shell: tar -xvzf httpd-${version}.tar.gz
+            sleep_in_sec:10
+        - name: Navigate to the HTTP installation directory and change ownership
+            shell:     cd /app/httpd-${version} 
+                    chown -R doliadm:doliadm httpd-${version}
+        - name:To Configure
+            shell: ./configure --prefix=/app/Apache${version}
+                    sleep_in_sec:20
+        - name: Run the command to compile and install package
+              shell:  make
+                    sleep_in_sec:20
+                    make install
+        -name: Shut down the Apache service
+            src:/app/Apache${version}/bin
+                ./apachectl –k stop         - name: Take backup of httpd.conf file
+            src: /app/Apache${version}/conf
+            shell: bkp_date= $(date + '%d%b%Y')
+                   cp -pr httpd.conf httpd.conf_BKP_{bkp_date}
+        - name: Update httpd.conf with listener port
+            src: /app/Apache${version}/conf/
+            shell: sed 's/80/7001' httpd.conf
+                   sed -i '/mod_ldap.so\|mod_authnz_ldap.so\|mod_access_compat.so\|mod_auth_basic.so/s/^#//g' httpd.conf
+                   cat Authentication.txt >> httpd.conf
+        - name: Disable TraceEnable 
+            src: /app/Apache${version}/conf/
+            shell: cat <<EOF>>httpd.conf>TraceEnable off>EOF
+        -name: Start the apache service
+            src: /app/Apache${version}/bin
+                ./apachectl –k start
+                curl -X TRACE {hosts}:7001

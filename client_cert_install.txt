@@ -1,0 +1,97 @@
+client certificate installation
+
+Step 1:  Re-create pfx file. 
+
+Extract cert and key file from .pfx file shared by App team. 
+
+Generate pfx/pkcs12 file with alias name (alias name that is in use before renewal) using the generated cert and private key. 
+
+ 
+
+In tmp directory, 
+
+ 
+
+Place the .pfx file shared by App team 
+
+#Command to extract key file from.pfx file 
+
+openssl pkcs12 -in CERT-client.pfx -nocerts -out CERT-client.key 
+
+  
+
+#Command to extract cert file from.pfx file  
+
+openssl pkcs12 -in CERT-client.pfx -clcerts -nokeys -out CERT-client.crt  
+
+ 
+
+#Remove the pfx file shared by App team 
+
+   rm  CERT-client.pfx  
+
+ 
+
+#Re-create .pfx file  
+
+openssl pkcs12 -export -in AZURE_CLARA-client-acc-final.cer -inkey AZURE_CLARA-client-acc-final.key -out AZURE_CLARA-client-acc-final.pfx -name azure_CLARA-client 
+
+ 
+
+Enter Export Password: <key-password> 
+
+Verifying - Enter Export Password: <key-password> 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+ 
+
+Step 2: Take backup of keystore and trustore files. 
+
+
+ 
+
+
+Step 3: Import the pfx file into the keystore. 
+
+Goto Java path : 
+
+ 
+
+ jdk path /usr/java/jdk1.7.0_80/bin/ 
+
+ 
+
+ 
+
+Execute below command : 
+
+keytool -importkeystore -srckeystore /tmp/AZURE_CLARA-client-acc-final.pfx -srcstoretype pkcs12 -alias azure_CLARA-client -destkeystore /app/security/a666-keystore.jks -deststoretype JKS 
+
+ 
+
+Enter destination keystore password: <keystore-password> 
+
+Enter source keystore password: <keystore-password> 
+
+ 
+
+   
+
+ Step 4: Import the crt file into the truststore. 
+
+keytool -import –alias azure_CLARA-client –file  /tmp/AZURE_CLARA-client-acc-final.cer -keystore /app/security/a666-truststore.jks -storepass <keystore-password> 
+
+ 
+
+Step 5: Restart the app service. 
+
+Step 6: Application functionality check 

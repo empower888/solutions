@@ -1,0 +1,28 @@
+SSL Certificate Installation
+
+
+step 1: cd /usr/java/jdk1.8.0_211/jre/lib/security
+step 2: cp /tmp/mobib-* . (Note:This copies the files in the tmp directory that end with mobib-* to the current directory, indicated by the single dot)
+step 3: cd bin
+step 4: ./keytool -import -alias mobibCIS_2022 -file /usr/java/jdk1.8.0_211/jre/lib/security/mobib-cis.acc-intern-belgiantrain.be.cer -keystore /usr/java/jdk1.8.0_211/jre/lib/security/cacerts
+step 5: Enter the password
+step 6: Write Yes to accept the certificate installation
+step 7: ./keytool -import -alias mobibRLS_2022 -file /usr/java/jdk1.8.0_211/jre/lib/security/mobib-rls.acc-intern-belgiantrain.be.cer -keystore /usr/java/jdk1.8.0_211/jre/lib/security/cacerts
+step 8: Enter the password
+step 9: Write Yes to accept the certificate installation
+step 10: cd /usr/java/jdk1.8.0_211/jre/lib/security
+step 11: keytool -list -keystore cacerts (To view certificates in keystore)
+
+
+
+
+
+
+
+
+
+
+
+
+cp /tmp/mobib-* .
+scp -r file_name adm_id@ip:/desired _path
